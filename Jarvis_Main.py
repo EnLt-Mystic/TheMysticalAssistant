@@ -1,8 +1,6 @@
 import json
-import os
 import ollama
 import vosk
-import noisereduce
 import sounddevice as sd
 import numpy as np
 import pyttsx3
@@ -23,7 +21,7 @@ TTS_engine.setProperty('volume', 1.0) # range of 0.0 - 1.0
 audio_device_name = "Speakers (HyperX Quadcast)"
 
 def speak(msg):
-    TTS_engine.say()
+    TTS_engine.say(msg)
     TTS_engine.runAndWait()
     TTS_engine.stop()
 
@@ -84,5 +82,4 @@ while True:
         response = ollama.chat(model=Agent_model, messages=[{'role': 'user', 'content' : user_input}], stream=False)
         print("Jarvis: ", response['message']['content'])
 
-        TTS_engine.say(response['message']['content'])
-        TTS_engine.runAndWait() # this speaks the response
+        speak(response['message']['content'])
