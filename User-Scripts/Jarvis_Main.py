@@ -4,6 +4,15 @@ import vosk
 import sounddevice as sd
 import numpy as np
 import pyttsx3
+import webbrowser
+import os
+import ast
+
+COMMANDS = {
+    "open_browser": lambda: webbrowser.open("https://www.google.com"),
+    "shutdown": lambda: os.system("shutdown /s /t 1"),
+    "greet": lambda: speak("Hello, how can I assist you?")
+}
 
 #model file locations/names
 Agent_model = "jarvis-model:mk1"
@@ -32,7 +41,11 @@ def init_History():
     history = [
         {
             'role' : 'system',
-            'content' : 'You are a personal assistant named Jarvis. You are to be as helpful as possible specifically inthe manner of technical problems. Keep your answers clear and concice unless specified otherwise.'
+            'content' : "You are a voice assistant named Jarvis. When the user gives a voice command, "
+                "you must interpret the command and respond with a JSON object formatted as:\n"
+                '{"command": "<command_name>", "text": "<response to speak>"}\n'
+                "If it's not a command, just respond normally as a helpful assistant. "
+                "Do not explain the JSON format in your answer."
         }
     ]
 
@@ -59,8 +72,6 @@ def listen():
 
             data = stream.read(4000)[0]
 
-            #reduced_data = noisereduce.reduce_noise(y=data, sr=16000)
-
             if speech_recogniser.AcceptWaveform(data.tobytes()):  # accepts the waveform from the stream into the speech_recogniser
 
                 full_text = speech_recogniser.Result()
@@ -79,7 +90,32 @@ while True:
     if user_input.lower() in ["exit", "quit"]:
         break
     if user_input:
-        response = ollama.chat(model=Agent_model, messages=[{'role': 'user', 'content' : user_input}], stream=False)
+        append_history({'role':'user', 'content': user_input})
+        response = ollama.chat(model=Agent_model, messages=history, stream=False)
+        message = response['message']['content']
         print("Jarvis: ", response['message']['content'])
+        print("Jarvis(Raw): ", response)
+        # command input parsing, will be moved to a function later
+        try:
 
-        speak(response['message']['content'])
+            #try parsing the command input
+            command_data = json.loads(message)
+            command = command_data.get("command")
+            text = command_data.get("text", "")
+
+            if command in COMMANDS:
+                COMMANDS[command]() # execute command function
+                speak(text)
+            else:
+                speak("Sorry sir, it appears I don't have that command active in my database.")
+        except json.JSONDecodeError:
+            # not a command
+            speak(message)
+
+        append_history({'role':'assistant', 'content': message})
+
+
+
+
+        #speak(response['message']['content'])
+
